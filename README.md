@@ -7,7 +7,7 @@
 
 2. `sudo apt-get update && sudo apt-get install git docker.io`
 
-3. `git clone https://github.com/torrange/pbxdocker
+3. `git clone https://github.com/torrange/pbxdocker`
 
 4. `cd pbxdocker && sudo docker build .`
 
