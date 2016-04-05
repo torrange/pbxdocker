@@ -1,6 +1,5 @@
 FROM phusion/baseimage
 
-# Set environment variables
 ENV DEBIAN_FRONTEND noninteractive
 ENV HOME="/root"
 ENV TERM=xterm
@@ -16,7 +15,6 @@ EXPOSE 80
 
 CMD ["/sbin/my_init"]
 
-# Setup services
 COPY start-apache2.sh /etc/service/apache2/run
 COPY start-mysqld.sh /etc/service/mysqld/run
 COPY start-asterisk.sh /etc/service/asterisk/run
@@ -26,18 +24,12 @@ COPY source/libzmq /usr/src
 COPY source/libsodium /usr/src 
 COPY source/czmq /usr/src 
 
-
-
 RUN chmod +x /etc/service/apache2/run && \
     chmod +x /etc/service/mysqld/run && \
     chmod +x /etc/service/asterisk/run && \
     chmod +x /etc/my_init.d/10_amportal.sh && \
     chmod +x /etc/my_init.d/20_fail2ban.sh
 
-# Following steps on FreePBX wiki
-# http://wiki.freepbx.org/display/HTGS/Installing+FreePBX+12+on+Ubuntu+Server+14.04+LTS
-
-# Install Required Dependencies
 RUN sed -i 's/archive.ubuntu.com/mirrors.digitalocean.com/' /etc/apt/sources.list && \
     apt-get update && \
     apt-get upgrade -y && \
@@ -93,20 +85,14 @@ RUN sed -i 's/archive.ubuntu.com/mirrors.digitalocean.com/' /etc/apt/sources.lis
     mv /etc/fail2ban/filter.d/asterisk.conf /etc/fail2ban/filter.d/asterisk.conf.org && \
     mv /etc/fail2ban/jail.conf /etc/fail2ban/jail.conf.org
 
-# Copy new fail2ban config for asterisk 13
 COPY conf/fail2ban/asterisk.conf /etc/fail2ban/filter.d/asterisk.conf
 COPY conf/fail2ban/jail.conf /etc/fail2ban/jail.conf
 
-# Replace default conf files to reduce memory usage
 COPY conf/my-small.cnf /etc/mysql/my.cnf
 COPY conf/mpm_prefork.conf /etc/apache2/mods-available/mpm_prefork.conf
 
-# Install PearDB
 RUN pear uninstall db && \
     pear install db-1.7.14
-
-# Compile and install pjproject
-
 
 COPY tarfiles/pjproject-2.3.tar.bz2 /usr/src/pjproject.tar.bz2
 WORKDIR /usr/src
@@ -120,8 +106,6 @@ RUN mkdir pjproject && \
     make install && \
     rm -r /usr/src/pjproject
 
-
-#Install Jansson
 COPY tarfiles/jansson-2.7.tar.gz /usr/src/jansson-2.7.tar.gz
 WORKDIR /usr/src
 RUN mkdir jansson && \
@@ -134,7 +118,6 @@ RUN mkdir jansson && \
     make install && \
     rm -r /usr/src/jansson
 
-# Compile and Install Asterisk
 COPY tarfiles/asterisk-13-current.tar.gz /usr/src/asterisk.tar.gz
 WORKDIR /usr/src
 RUN mkdir asterisk && \
@@ -152,7 +135,6 @@ RUN mkdir asterisk && \
     ldconfig && \
     rm -r /usr/src/asterisk
 
-# Configure extra sounds
 COPY tarfiles/asterisk-extra-sounds-en-g722-current.tar.gz /var/lib/asterisk/sounds/asterisk-extra-sounds-en-g722-current.tar.gz
 COPY tarfiles/asterisk-extra-sounds-en-wav-current.tar.gz /var/lib/asterisk/sounds/asterisk-extra-sounds-en-wav-current.tar.gz
 WORKDIR /var/lib/asterisk/sounds
@@ -161,7 +143,6 @@ RUN tar -xzf asterisk-extra-sounds-en-wav-current.tar.gz && \
     tar -xzf asterisk-extra-sounds-en-g722-current.tar.gz && \
     rm -f asterisk-extra-sounds-en-g722-current.tar.gz
 
-# Add Asterisk user
 RUN useradd -m $ASTERISKUSER && \
     chown $ASTERISKUSER. /var/run/asterisk && \ 
     chown -R $ASTERISKUSER. /etc/asterisk && \
@@ -173,24 +154,18 @@ RUN useradd -m $ASTERISKUSER && \
     chown -R $ASTERISKUSER. /var/www/* && \
     rm -rf /var/www/html
 
-# Configure apache
 RUN sed -i 's/\(^upload_max_filesize = \).*/\120M/' /etc/php5/apache2/php.ini && \
     cp /etc/apache2/apache2.conf /etc/apache2/apache2.conf_orig && \
     sed -i 's/^\(User\|Group\).*/\1 asterisk/' /etc/apache2/apache2.conf && \
     sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
-# Configure Asterisk database in MYSQL
 RUN /etc/init.d/mysql start && \
     mysqladmin -u root create asterisk && \
     mysqladmin -u root create asteriskcdrdb && \
     mysql -u root -e "GRANT ALL PRIVILEGES ON asterisk.* TO $ASTERISKUSER@localhost IDENTIFIED BY '$ASTERISK_DB_PW';" && \
     mysql -u root -e "GRANT ALL PRIVILEGES ON asteriskcdrdb.* TO $ASTERISKUSER@localhost IDENTIFIED BY '$ASTERISK_DB_PW';" && \
     mysql -u root -e "flush privileges;"
-    
 
-
-#Install FreePBX
-#COPY conf/retrieve_conf /retrieve_conf
 COPY tarfiles/freepbx-12.0.43.tgz /usr/src/freepbx-12.0.43.tgz
 WORKDIR /usr/src
 RUN tar xfz freepbx-$FREEPBXVER.tgz && \
@@ -198,7 +173,6 @@ RUN tar xfz freepbx-$FREEPBXVER.tgz && \
     cd /usr/src/freepbx && \
     /etc/init.d/mysql start && \
     /etc/init.d/apache2 start && \
-    #cp -f /retrieve_conf  /var/lib/asterisk/bin/retrieve_conf && \
     /usr/sbin/asterisk && \ 
     ./install_amp --installdb --username=$ASTERISKUSER --password=$ASTERISK_DB_PW && \
     amportal chown && \
@@ -215,28 +189,10 @@ RUN tar xfz freepbx-$FREEPBXVER.tgz && \
     ln -s /var/lib/asterisk/moh /var/lib/asterisk/mohmp3 && \
     rm -r /usr/src/freepbx
 
-
-
-#Replace broken retrieve_conf with patched version
-#COPY conf/retrieve_conf /var/lib/asterisk/bin/retrieve_conf
-
-
-
-#Make CDRs work
 COPY conf/cdr/odbc.ini /etc/odbc.ini
 COPY conf/cdr/odbcinst.ini /etc/odbcinst.ini
 COPY conf/cdr/cdr_adaptive_odbc.conf /etc/asterisk/cdr_adaptive_odbc.conf
 RUN chown asterisk:asterisk /etc/asterisk/cdr_adaptive_odbc.conf && \
     chmod 775 /etc/asterisk/cdr_adaptive_odbc.conf
-
-
-#Whitelist London & Cape Town office IPs
-#RUN iptables -A INPUT -s 5.159.121.131 -j ACCEPT && \
-#    iptables -A INPUT -s 88.215.55.97 -j ACCEPT && \ 
-#    iptables -A INPUT -s 88.215.55.98 -j ACCEPT && \ 
-#    iptables -A INPUT -s 88.215.55.98 -j ACCEPT && \ 
-#    iptables -A INPUT -s 154.70.216.187 -j ACCEPT && \ 
-    #iptables -A INPUT -i eth0 -s 192.168.1.0/24 -j ACCEPT && \ 
-#    iptables -P INPUT DROP
 
 WORKDIR /
