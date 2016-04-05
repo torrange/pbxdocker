@@ -1,6 +1,6 @@
 # docker-freepbx
 
-## FreePBX Docker.io setup for astcore.bonline.com
+## FreePBX Setup For Ubuntu 14.04 on Docker
 
 
 1. Create an Ubuntu 14.04 instance on Digital Ocean (or VPS of choice) & connect via ssh
