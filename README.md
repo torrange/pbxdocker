@@ -1,4 +1,4 @@
-# docker-freepbx
+# pbxdocker
 
 ## FreePBX Setup For Ubuntu 14.04 on Docker
 
