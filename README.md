@@ -15,7 +15,7 @@
 
 6. Open [http://{{digital_ocean_ip}}/](http://127.0.0.1) in a browser.
 
-7. Create admin user when prompted
+7. Create administrator user when prompted
 
 8. In the FreePBX control panel,  open “Settings” => “Advanced Settings”
     1. switch “SIP Channel Driver” to ‘chan_sip’
